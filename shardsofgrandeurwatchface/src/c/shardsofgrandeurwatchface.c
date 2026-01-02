@@ -1,13 +1,13 @@
 #include <pebble.h>
 
 #if defined(PBL_COLOR)
-#define BGColor GColorFromHEX(0x4e6180)
+#define BGColor GColorLiberty
 #define TxtColor GColorWhite
 #define FullColor GColorFromHEX(0x00de00)
 #define LowColor GColorFromHEX(0xef0000)
 #define WarnColor GColorFromHEX(0xffb700)
 #define HpBorderColor GColorFromHEX(0x2b2523)
-#define ChargingColor GColorGreen
+#define ChargingColor GColorFromHEX(0x44ab36)
 #else
 #define BGColor GColorWhite
 #define TxtColor GColorBlack
@@ -18,25 +18,35 @@
 #define ChargingColor GColorBlack
 #endif
 
-#if defined(PBL_ROUND)
-#define ROUND_OFFSET_TIME 30
-#define ROUND_OFFSET_DATE 68
+// Pebble Time Round (1?) graphical elements' position offsets
+#define ROUND_OFFSET_TIME_Y 30
+#define ROUND_OFFSET_DATE_Y 68
 #define ROUND_OFFSET_SPRITE_X 44
 #define ROUND_OFFSET_SPRITE_Y 4
 #define ROUND_OFFSET_BAR_X -18
 #define ROUND_OFFSET_BAR_Y -104
 #define ROUND_OFFSET_BT_X 36
 #define ROUND_OFFSET_BT_Y -14
-#else
-#define ROUND_OFFSET_TIME 0
-#define ROUND_OFFSET_DATE 44
-#define ROUND_OFFSET_SPRITE_X 0
-#define ROUND_OFFSET_SPRITE_Y 0
-#define ROUND_OFFSET_BAR_X 0
-#define ROUND_OFFSET_BAR_Y 0
-#define ROUND_OFFSET_BT_X 0
-#define ROUND_OFFSET_BT_Y 0
-#endif
+
+// common rectangular watches' time/date position offsets
+#define RECT_OFFSET_TIME_Y 0
+#define RECT_OFFSET_DATE_Y 44
+
+// Pebble Time 2 (200 x 228 display size) position offsets
+#define EMERY_OFFSET_SPRITE_X 12
+#define EMERY_OFFSET_SPRITE_Y 0
+#define EMERY_OFFSET_BAR_X 28
+#define EMERY_OFFSET_BAR_Y -26
+#define EMERY_OFFSET_BT_X EMERY_OFFSET_BAR_X
+#define EMERY_OFFSET_BT_Y EMERY_OFFSET_BAR_Y
+
+// Non-Time 2 rectangular watches' position offsets
+#define RECT_OFFSET_SPRITE_X 0
+#define RECT_OFFSET_SPRITE_Y 0
+#define RECT_OFFSET_BAR_X 0
+#define RECT_OFFSET_BAR_Y 0
+#define RECT_OFFSET_BT_X RECT_OFFSET_BAR_X
+#define RECT_OFFSET_BT_Y RECT_OFFSET_BAR_Y
 
 static Window * s_main_window;           //main window
 static TextLayer * s_time_layer;         //time layer
@@ -51,6 +61,15 @@ static BitmapLayer * s_bt_icon_layer;    //bluetooth icon layer
 static GBitmap * s_bt_icon_bitmap;       //actual bluetooth bitmap
 static int s_battery_level;              //battery %
 GRect bound;
+
+static int offsetSpriteX = 0;
+static int offsetSpriteY = 0;
+static int offsetBarX = 0;
+static int offsetBarY = 0;
+static int offsetBtX = 0;
+static int offsetBtY = 0;
+static int offsetTimeY = 0;
+static int offsetDateY = 0;
 
 static void canvas_update_proc();
 static void battery_update_proc();
@@ -100,8 +119,8 @@ static void main_window_load(Window *window) {
   
   
   // Create the TextLayer with specific bounds
-  s_time_layer = text_layer_create(GRect(2, ROUND_OFFSET_TIME, bounds.size.w, 48));
-  s_date_layer = text_layer_create(GRect(3, ROUND_OFFSET_DATE, bounds.size.w, 28));
+  s_time_layer = text_layer_create(GRect(2, offsetTimeY, bounds.size.w, 48));
+  s_date_layer = text_layer_create(GRect(3, offsetDateY, bounds.size.w, 28));
 
   // Improve the layout to be more like a watchface
   s_time_font = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_RETRO_FONT_40));
@@ -123,7 +142,7 @@ static void main_window_load(Window *window) {
   s_bt_icon_bitmap = gbitmap_create_with_resource(RESOURCE_ID_BT_DC_IMAGE);
 
   // Create BitmapLayer to display the GBitmap
-  s_background_layer = bitmap_layer_create(GRect(ROUND_OFFSET_SPRITE_X, 104 + ROUND_OFFSET_SPRITE_Y, bounds.size.w / 2, 64));
+  s_background_layer = bitmap_layer_create(GRect(offsetSpriteX, 104 + offsetSpriteY, bounds.size.w / 2, 64));
 
   // Set the bitmap onto the layer and add to the window
   bitmap_layer_set_bitmap(s_background_layer, s_background_bitmap);
@@ -133,7 +152,7 @@ static void main_window_load(Window *window) {
   layer_set_update_proc(s_battery_layer, battery_update_proc);
 	
   // Create the BitmapLayer to display the GBitmap
-  s_bt_icon_layer = bitmap_layer_create(GRect(90 + ROUND_OFFSET_BT_X, bound.size.h * .725 + ROUND_OFFSET_BT_Y, 30, 30));
+  s_bt_icon_layer = bitmap_layer_create(GRect(90 + offsetBtX, bound.size.h * .725 + offsetBtY, 30, 30));
   bitmap_layer_set_bitmap(s_bt_icon_layer, s_bt_icon_bitmap);
 
   // Add to Window
@@ -147,7 +166,8 @@ static void main_window_load(Window *window) {
   battery_callback(battery_state_service_peek());
 	
   // Show the correct state of the BT connection from the start
-  bluetooth_callback(connection_service_peek_pebble_app_connection());
+  bluetooth_callback(false);
+  //bluetooth_callback(connection_service_peek_pebble_app_connection());
 }
 
 static void main_window_unload(Window *window) {
@@ -185,8 +205,8 @@ static void battery_update_proc(Layer *layer, GContext *ctx) {
       graphics_context_set_stroke_color(ctx, LowColor);
       graphics_context_set_fill_color(ctx, LowColor);
     }
-	int magicNum = bound.size.h * .675 + ROUND_OFFSET_BAR_Y;
-	int startX = 75 + ROUND_OFFSET_BAR_X;
+	int magicNum = bound.size.h * .675 + offsetBarY;
+	int startX = 75 + offsetBarX;
   if (s_battery_level != 0) 
     graphics_fill_rect(ctx, GRect(startX, magicNum, width, 6), 0, GCornersAll);
   else
@@ -195,7 +215,7 @@ static void battery_update_proc(Layer *layer, GContext *ctx) {
       graphics_draw_line(ctx, GPoint(startX, magicNum + 5), GPoint(startX + 63, magicNum));
     }
   graphics_context_set_stroke_color(ctx, HpBorderColor);
-  graphics_draw_rect(ctx, GRect(startX - 1, bound.size.h * .675 - 1 + ROUND_OFFSET_BAR_Y, 66, 8));
+  graphics_draw_rect(ctx, GRect(startX - 1, bound.size.h * .675 - 1 + offsetBarY, 66, 8));
   if (battery_state_service_peek().is_charging == true)
     {
       graphics_context_set_stroke_color(ctx, ChargingColor);
@@ -238,6 +258,26 @@ static void date_handler(struct tm *tick_time, TimeUnits units_changed) {
 //*/
 
 static void init() {
+  PBL_IF_RECT_ELSE(offsetTimeY = RECT_OFFSET_TIME_Y, offsetTimeY = ROUND_OFFSET_TIME_Y);
+  PBL_IF_RECT_ELSE(offsetDateY = RECT_OFFSET_DATE_Y, offsetDateY = ROUND_OFFSET_DATE_Y);
+  
+  if (PBL_PLATFORM_TYPE_CURRENT == PlatformTypeEmery) {
+    offsetSpriteX = EMERY_OFFSET_SPRITE_X;
+    offsetSpriteY = EMERY_OFFSET_SPRITE_Y;
+    offsetBarX = EMERY_OFFSET_BAR_X;
+    offsetBarY = EMERY_OFFSET_BAR_Y;
+    offsetBtX = EMERY_OFFSET_BT_X;
+    offsetBtY = EMERY_OFFSET_BT_Y;
+  } else {
+    PBL_IF_RECT_ELSE(offsetSpriteX = RECT_OFFSET_SPRITE_X, offsetSpriteX = ROUND_OFFSET_SPRITE_X);
+    PBL_IF_RECT_ELSE(offsetSpriteY = RECT_OFFSET_SPRITE_Y, offsetSpriteY = ROUND_OFFSET_SPRITE_Y);
+    PBL_IF_RECT_ELSE(offsetBarX = RECT_OFFSET_BAR_X, offsetBarX = ROUND_OFFSET_BAR_X);
+    PBL_IF_RECT_ELSE(offsetBarY = RECT_OFFSET_BAR_Y, offsetBarY = ROUND_OFFSET_BAR_Y);
+    PBL_IF_RECT_ELSE(offsetBtX = RECT_OFFSET_BT_X, offsetBtX = ROUND_OFFSET_BT_X);
+    PBL_IF_RECT_ELSE(offsetBtY = RECT_OFFSET_BT_Y, offsetBtY = ROUND_OFFSET_BT_Y);
+  }
+
+
   // Create main Window element and assign to pointer
   s_main_window = window_create();
 
@@ -254,7 +294,7 @@ static void init() {
   battery_state_service_subscribe(battery_callback);
 	
 	// Register for Bluetooth connection updates
-  	connection_service_subscribe((ConnectionHandlers) {
+  connection_service_subscribe((ConnectionHandlers) {
   	.pebble_app_connection_handler = bluetooth_callback
   });
 

@@ -42,7 +42,6 @@
           "targetPlatforms": [
             "basalt",
             "chalk",
-            "diorite",
             "emery"
           ],
           "type": "png"
@@ -52,6 +51,7 @@
           "name": "ICON_IMAGE",
           "targetPlatforms": [
             "aplite",
+            "diorite",
             "flint"
           ],
           "type": "bitmap"
@@ -69,7 +69,6 @@
           "targetPlatforms": [
             "basalt",
             "chalk",
-            "diorite",
             "emery"
           ],
           "type": "png"
@@ -79,6 +78,7 @@
           "name": "BT_DC_IMAGE",
           "targetPlatforms": [
             "aplite",
+            "diorite",
             "flint"
           ],
           "type": "bitmap"
