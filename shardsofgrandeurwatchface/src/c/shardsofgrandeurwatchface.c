@@ -7,7 +7,7 @@
 #define LowColor GColorFromHEX(0xef0000)
 #define WarnColor GColorFromHEX(0xffb700)
 #define HpBorderColor GColorFromHEX(0x2b2523)
-#define ChargingColor GColorFromHEX(0x44ab36)
+#define ChargingColor GColorFromHEX(0x005500)
 #else
 #define BGColor GColorWhite
 #define TxtColor GColorBlack
@@ -18,7 +18,7 @@
 #define ChargingColor GColorBlack
 #endif
 
-// Pebble Time Round (1?) graphical elements' position offsets
+// Pebble Time Round (1 only?) graphical elements' position offsets
 #define ROUND_OFFSET_TIME_Y 30
 #define ROUND_OFFSET_DATE_Y 68
 #define ROUND_OFFSET_SPRITE_X 44
@@ -220,11 +220,13 @@ static void battery_update_proc(Layer *layer, GContext *ctx) {
     {
       graphics_context_set_stroke_color(ctx, ChargingColor);
 	  
-	  int xCoord[6] = {startX + 3, startX + 14, startX + 23, startX + 35, startX + 46, startX + 58};
-	  int yCoord[12] = {magicNum - 4, magicNum - 5, magicNum - 4, magicNum - 4, magicNum - 5, magicNum - 4, magicNum - 7, magicNum - 8, magicNum - 6, magicNum - 7, magicNum - 8, magicNum - 7};
-	  for(int i = 0; i < 6; i++)
-		  {
-      		graphics_draw_line(ctx, GPoint(xCoord[i], yCoord[i]), GPoint(xCoord[i], yCoord[i + 6]));
+      int xCoord[6] = {startX + 3, startX + 14, startX + 23, startX + 35, startX + 46, startX + 58};
+      int yCoord[12] = {magicNum - 4, magicNum - 5, magicNum - 4, magicNum - 4, magicNum - 5, magicNum - 4, magicNum - 7, magicNum - 8, magicNum - 6, magicNum - 7, magicNum - 8, magicNum - 7};
+      for(int i = 0; i < 6; i++)
+        {
+          for (int j = -2; j < 2; j++) {
+        		graphics_draw_line(ctx, GPoint(xCoord[i] + j, yCoord[i]), GPoint(xCoord[i] + j, yCoord[i + 6]));
+          }
 	  	  }
     }
 }
