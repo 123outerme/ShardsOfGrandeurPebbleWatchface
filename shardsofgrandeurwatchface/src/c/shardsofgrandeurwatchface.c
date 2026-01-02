@@ -166,8 +166,8 @@ static void main_window_load(Window *window) {
   battery_callback(battery_state_service_peek());
 	
   // Show the correct state of the BT connection from the start
-  bluetooth_callback(false);
-  //bluetooth_callback(connection_service_peek_pebble_app_connection());
+  //bluetooth_callback(false); // FOR TESTING BT CONNECTION LOST ICON ONLY
+  bluetooth_callback(connection_service_peek_pebble_app_connection());
 }
 
 static void main_window_unload(Window *window) {
