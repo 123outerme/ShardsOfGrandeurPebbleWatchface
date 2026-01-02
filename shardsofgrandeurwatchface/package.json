@@ -1,0 +1,89 @@
+{
+  "name": "shardsofgrandeurwatchface",
+  "author": "ShardsOfGrandeur",
+  "version": "1.0.0",
+  "keywords": ["pebble-app"],
+  "private": true,
+  "dependencies": {},
+  "pebble": {
+    "displayName": "ShardsOfGrandeur",
+    "uuid": "76367a20-6fd8-46df-b4e9-ec0222512372",
+    "sdkVersion": "3",
+    "enableMultiJS": true,
+    "targetPlatforms": [
+      "aplite",
+      "basalt",
+      "chalk",
+      "diorite",
+      "emery",
+      "flint"
+    ],
+    "watchapp": {
+      "watchface": true
+    },
+    "messageKeys": [],
+    "resources": {
+      "media": [
+        {
+          "file": "fonts/retro_gaming_18.ttf",
+          "name": "RETRO_FONT_18",
+          "targetPlatforms": null,
+          "type": "font"
+        },
+        {
+          "file": "fonts/retro_gaming_40.ttf",
+          "name": "RETRO_FONT_40",
+          "targetPlatforms": null,
+          "type": "font"
+        },
+        {
+          "file": "images/player64_color.png",
+          "name": "ICON_IMAGE",
+          "targetPlatforms": [
+            "basalt",
+            "chalk",
+            "diorite",
+            "emery"
+          ],
+          "type": "png"
+        },
+        {
+          "file": "images/player64_bw.png",
+          "name": "ICON_IMAGE",
+          "targetPlatforms": [
+            "aplite",
+            "flint"
+          ],
+          "type": "bitmap"
+        },
+        {
+          "file": "images/player24_bw.png",
+          "name": "WF_ICON_IMAGE",
+          "targetPlatforms": null,
+          "menuIcon": true,
+          "type": "bitmap"
+        },
+        {
+          "file": "images/bt_disconnect_color.png",
+          "name": "BT_DC_IMAGE",
+          "targetPlatforms": [
+            "basalt",
+            "chalk",
+            "diorite",
+            "emery"
+          ],
+          "type": "png"
+        },
+        {
+          "file": "images/bt_disconnect_bw.png",
+          "name": "BT_DC_IMAGE",
+          "targetPlatforms": [
+            "aplite",
+            "flint"
+          ],
+          "type": "bitmap"
+        }
+      ]
+    }
+  }
+}
