@@ -243,8 +243,10 @@ static void bluetooth_callback(bool connected) {
   layer_set_hidden(bitmap_layer_get_layer(s_bt_icon_layer), connected);
 
   if(!connected)
-	  vibes_double_pulse();
+    if (!quiet_time_is_active()) {
       // Issue a vibrating alert
+	    vibes_double_pulse();
+    }
 }
 
 static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
