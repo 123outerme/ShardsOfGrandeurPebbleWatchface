@@ -31,7 +31,7 @@
     }
   },
 
-  "workspaceFolder": "/workspaces/codespaces-pebble/shardsofgrandeurwatchface",
+  "workspaceFolder": "/workspaces/ShardsOfGrandeurPebbleWatchface/shardsofgrandeurwatchface",
   "containerEnv": {
     "LOCALWORKSPACEFOLDERBASENAME": "${localWorkspaceFolderBasename}",
     "LOCALWORKSPACEFOLDER": "${localWorkspaceFolder}",
