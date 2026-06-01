@@ -3,7 +3,7 @@
 #if PBL_PLATFORM_TYPE_CURRENT == PlatformTypeEmery || PBL_PLATFORM_TYPE_CURRENT == PlatformTypeDiorite
 #define HR_SUPPORTED 1
 #else
-#define HR_SUPPORTED 0
+#define HR_SUPPORTED 0 // done this way so #if macros can work, as well as if() statements
 #endif
 
 #if defined(PBL_COLOR)
@@ -23,6 +23,9 @@
 #define HpBorderColor GColorBlack
 #define ChargingColor GColorBlack
 #endif
+
+// Battery bar height in px
+#define BATT_BAR_HEIGHT 6
 
 // Pebble Time Round (1 only?) graphical elements' position offsets
 #define ROUND_OFFSET_TIME_Y 30
@@ -56,7 +59,7 @@
 
 // Heart-rate compatible watches' HR text offset:
 #define HR_OFFSET_FROM_BAR_X 0
-#define HR_OFFSET_FROM_BAR_Y 12
+#define HR_OFFSET_FROM_BAR_Y (-BATT_BAR_HEIGHT - 14 - 8 - 6) // -14 for the font size (half of 28 px size), -8 for the battery charge indicator, -6 for some padding
 
 static Window * s_main_window;           //main window
 static TextLayer * s_time_layer;         //time layer
@@ -204,9 +207,6 @@ static void main_window_load(Window *window) {
   // Show the correct state of the BT connection from the start
   //bluetooth_callback(false); // FOR TESTING BT CONNECTION LOST ICON ONLY
   bluetooth_callback(connection_service_peek_pebble_app_connection());
-  #if HR_SUPPORTED == 1
-  health_callback(HealthEventHeartRateUpdate, 0); // TODO check if necessary
-  #endif
 }
 
 static void main_window_unload(Window *window) {
@@ -247,14 +247,14 @@ static void battery_update_proc(Layer *layer, GContext *ctx) {
 	int magicNum = bound.size.h * .675 + offsetBarY; // ???
 	int startX = 75 + offsetBarX;
   if (s_battery_level != 0) 
-    graphics_fill_rect(ctx, GRect(startX, magicNum, width, 6), 0, GCornersAll);
+    graphics_fill_rect(ctx, GRect(startX, magicNum, width, BATT_BAR_HEIGHT), 0, GCornersAll);
   else
     {
-      graphics_draw_line(ctx, GPoint(startX, magicNum), GPoint(startX + 63, magicNum + 5));
-      graphics_draw_line(ctx, GPoint(startX, magicNum + 5), GPoint(startX + 63, magicNum));
+      graphics_draw_line(ctx, GPoint(startX, magicNum), GPoint(startX + 63, magicNum + BATT_BAR_HEIGHT - 1));
+      graphics_draw_line(ctx, GPoint(startX, magicNum + BATT_BAR_HEIGHT - 1), GPoint(startX + 63, magicNum));
     }
   graphics_context_set_stroke_color(ctx, HpBorderColor);
-  graphics_draw_rect(ctx, GRect(startX - 1, bound.size.h * .675 - 1 + offsetBarY, 66, 8));
+  graphics_draw_rect(ctx, GRect(startX - 1, bound.size.h * .675 - 1 + offsetBarY, 66, BATT_BAR_HEIGHT + 2));
   if (battery_state_service_peek().is_charging == true)
     {
       graphics_context_set_stroke_color(ctx, ChargingColor);
@@ -302,7 +302,7 @@ static void date_handler(struct tm *tick_time, TimeUnits units_changed) {
 
 #if HR_SUPPORTED == 1
 static void health_callback(HealthEventType event, void *context) {
-  if (healthSubscribed && event == HealthEventHeartRateUpdate) {
+  if (healthSubscribed && (event == HealthEventHeartRateUpdate || event == HealthEventSignificantUpdate)) {
     HealthValue hrtRate = health_service_peek_current_value(HealthMetricHeartRateBPM);
     if (hrtRate > 0 && hrtRate < 999) { // just in case for buffer reasons; nobody should ever has a HR of 1000+!!!
       // Write the current hours and minutes into a buffer
@@ -312,6 +312,8 @@ static void health_callback(HealthEventType event, void *context) {
       
       // Display the time on the TextLayer
       text_layer_set_text(s_hr_layer, s_buffer);
+    } else {
+      text_layer_set_text(s_hr_layer, "");
     }
   }
 }
@@ -374,7 +376,7 @@ static void init() {
   // Make sure the time is displayed from the start
   update_time();
   // Make sure date is also displayed immediately
-  update_date();
+  //update_date(); // unnecessary to call after update_time(), since that calls update_date()
 }
 
 static void deinit() {
