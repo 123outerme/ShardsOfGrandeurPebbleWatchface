@@ -1,7 +1,7 @@
 {
   "name": "shardsofgrandeurwatchface",
   "author": "ShardsOfGrandeur",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "keywords": ["pebble-app", "watchface"],
   "private": true,
   "dependencies": {},
@@ -16,7 +16,8 @@
       "chalk",
       "diorite",
       "emery",
-      "flint"
+      "flint",
+      "gabbro"
     ],
     "watchapp": {
       "watchface": true
@@ -42,7 +43,8 @@
           "targetPlatforms": [
             "basalt",
             "chalk",
-            "emery"
+            "emery",
+            "gabbro"
           ],
           "type": "png"
         },
@@ -69,7 +71,8 @@
           "targetPlatforms": [
             "basalt",
             "chalk",
-            "emery"
+            "emery",
+            "gabbro"
           ],
           "type": "png"
         },

@@ -1,5 +1,11 @@
 #include <pebble.h>
 
+#if PBL_PLATFORM_TYPE_CURRENT == PlatformTypeEmery || PBL_PLATFORM_TYPE_CURRENT == PlatformTypeDiorite
+#define HR_SUPPORTED 1
+#else
+#define HR_SUPPORTED 0
+#endif
+
 #if defined(PBL_COLOR)
 #define BGColor GColorLiberty
 #define TxtColor GColorWhite
@@ -48,11 +54,18 @@
 #define RECT_OFFSET_BT_X RECT_OFFSET_BAR_X
 #define RECT_OFFSET_BT_Y RECT_OFFSET_BAR_Y
 
+// Heart-rate compatible watches' HR text offset:
+#define HR_OFFSET_FROM_BAR_X 0
+#define HR_OFFSET_FROM_BAR_Y 12
+
 static Window * s_main_window;           //main window
 static TextLayer * s_time_layer;         //time layer
 static TextLayer * s_date_layer;         //date layer
-static GFont s_time_font;                //TI-84+ font in 40pt size
-static GFont s_txt_font;                 //TI-84+ font in 24pt size
+#if HR_SUPPORTED == 1
+static TextLayer * s_hr_layer;           //heart rate layer
+#endif
+static GFont s_time_font;                //retro font in 40pt size
+static GFont s_txt_font;                 //retro font in 24pt size
 static Layer * s_canvas_layer;           //bg layer
 static Layer * s_battery_layer;          //drawing layer for battery indicator
 static BitmapLayer * s_background_layer; //character sprite layer
@@ -70,12 +83,19 @@ static int offsetBtX = 0;
 static int offsetBtY = 0;
 static int offsetTimeY = 0;
 static int offsetDateY = 0;
+#if HR_SUPPORTED == 1
+static int offsetHrFromBarY = 0;
+static bool healthSubscribed = false;
+#endif
 
 static void canvas_update_proc();
 static void battery_update_proc();
 static void battery_callback();
 static void bluetooth_callback(bool connected);
 static void update_date();
+#if HR_SUPPORTED == 1
+static void health_callback(HealthEventType event, void *context);
+#endif
 
 static void update_time() {
   // Get a tm structure
@@ -122,10 +142,16 @@ static void main_window_load(Window *window) {
   s_time_layer = text_layer_create(GRect(2, offsetTimeY, bounds.size.w, 48));
   s_date_layer = text_layer_create(GRect(3, offsetDateY, bounds.size.w, 28));
 
+  #if HR_SUPPORTED == 1
+  int magicNum = bound.size.h * .675 + offsetBarY + offsetHrFromBarY; // ???
+	int startX = 75 + offsetBarX;
+  s_hr_layer = text_layer_create(GRect(startX, magicNum, bounds.size.w, 28));
+  #endif
+
   // Improve the layout to be more like a watchface
   s_time_font = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_RETRO_FONT_40));
   s_txt_font = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_RETRO_FONT_18));
-	
+  
   text_layer_set_background_color(s_time_layer, BGColor);
   text_layer_set_text_color(s_time_layer, TxtColor);
   text_layer_set_font(s_time_layer, s_time_font);
@@ -135,6 +161,13 @@ static void main_window_load(Window *window) {
   text_layer_set_text_color(s_date_layer, TxtColor);
   text_layer_set_font(s_date_layer, s_txt_font);
   text_layer_set_text_alignment(s_date_layer, GTextAlignmentCenter);
+
+  #if HR_SUPPORTED == 1
+  text_layer_set_background_color(s_hr_layer, BGColor);
+  text_layer_set_text_color(s_hr_layer, TxtColor);
+  text_layer_set_font(s_hr_layer, s_txt_font);
+  text_layer_set_text_alignment(s_hr_layer, GTextAlignmentLeft);
+  #endif
 
   // Create GBitmap
   s_background_bitmap = gbitmap_create_with_resource(RESOURCE_ID_ICON_IMAGE);
@@ -159,6 +192,9 @@ static void main_window_load(Window *window) {
   layer_add_child(window_layer, bitmap_layer_get_layer(s_background_layer));
   layer_add_child(window_layer, text_layer_get_layer(s_time_layer));
   layer_add_child(window_layer, text_layer_get_layer(s_date_layer));
+  #if HR_SUPPORTED == 1
+  layer_add_child(window_layer, text_layer_get_layer(s_hr_layer));
+  #endif
   layer_add_child(window_get_root_layer(window), bitmap_layer_get_layer(s_bt_icon_layer));
   layer_add_child(window_layer, s_battery_layer);
   
@@ -168,6 +204,9 @@ static void main_window_load(Window *window) {
   // Show the correct state of the BT connection from the start
   //bluetooth_callback(false); // FOR TESTING BT CONNECTION LOST ICON ONLY
   bluetooth_callback(connection_service_peek_pebble_app_connection());
+  #if HR_SUPPORTED == 1
+  health_callback(HealthEventHeartRateUpdate, 0); // TODO check if necessary
+  #endif
 }
 
 static void main_window_unload(Window *window) {
@@ -205,7 +244,7 @@ static void battery_update_proc(Layer *layer, GContext *ctx) {
       graphics_context_set_stroke_color(ctx, LowColor);
       graphics_context_set_fill_color(ctx, LowColor);
     }
-	int magicNum = bound.size.h * .675 + offsetBarY;
+	int magicNum = bound.size.h * .675 + offsetBarY; // ???
 	int startX = 75 + offsetBarX;
   if (s_battery_level != 0) 
     graphics_fill_rect(ctx, GRect(startX, magicNum, width, 6), 0, GCornersAll);
@@ -261,6 +300,23 @@ static void date_handler(struct tm *tick_time, TimeUnits units_changed) {
 }
 //*/
 
+#if HR_SUPPORTED == 1
+static void health_callback(HealthEventType event, void *context) {
+  if (healthSubscribed && event == HealthEventHeartRateUpdate) {
+    HealthValue hrtRate = health_service_peek_current_value(HealthMetricHeartRateBPM);
+    if (hrtRate > 0 && hrtRate < 999) { // just in case for buffer reasons; nobody should ever has a HR of 1000+!!!
+      // Write the current hours and minutes into a buffer
+      static char s_buffer[9];
+      s_buffer[8] = '\0'; // manually add null-terminator just in case
+      snprintf(s_buffer, 8, "HR: %ld", hrtRate);
+      
+      // Display the time on the TextLayer
+      text_layer_set_text(s_hr_layer, s_buffer);
+    }
+  }
+}
+#endif
+
 static void init() {
   PBL_IF_RECT_ELSE(offsetTimeY = RECT_OFFSET_TIME_Y, offsetTimeY = ROUND_OFFSET_TIME_Y);
   PBL_IF_RECT_ELSE(offsetDateY = RECT_OFFSET_DATE_Y, offsetDateY = ROUND_OFFSET_DATE_Y);
@@ -280,6 +336,10 @@ static void init() {
     PBL_IF_RECT_ELSE(offsetBtX = RECT_OFFSET_BT_X, offsetBtX = ROUND_OFFSET_BT_X);
     PBL_IF_RECT_ELSE(offsetBtY = RECT_OFFSET_BT_Y, offsetBtY = ROUND_OFFSET_BT_Y);
   }
+
+  #if HR_SUPPORTED == 1
+  offsetHrFromBarY = HR_OFFSET_FROM_BAR_Y;
+  #endif
 
 
   // Create main Window element and assign to pointer
@@ -302,6 +362,12 @@ static void init() {
   	.pebble_app_connection_handler = bluetooth_callback
   });
 
+  PBL_IF_HEALTH_ELSE({
+    #if HR_SUPPORTED == 1
+      healthSubscribed = health_service_events_subscribe(health_callback, 0); // 2nd arg: null
+    #endif
+  }, {});
+
   // Show the Window on the watch, with animated=true
   window_stack_push(s_main_window, true);
   
@@ -312,7 +378,14 @@ static void init() {
 }
 
 static void deinit() {
-
+  tick_timer_service_unsubscribe();
+  connection_service_unsubscribe();
+  PBL_IF_HEALTH_ELSE({
+    #if HR_SUPPORTED == 1
+      healthSubscribed = !health_service_events_unsubscribe();
+    #endif
+  }, {});
+  
 }
 
 
